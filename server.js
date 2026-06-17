@@ -1,7 +1,6 @@
 import express from "express";
 import fs from "fs";
 import path from "path";
-import crypto from "crypto";
 import PDFDocument from "pdfkit";
 import { fileURLToPath } from "url";
 
@@ -9,8 +8,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
 app.use(express.json({ limit: "2mb" }));
 
-const SECRET = process.env.SESSION_SECRET || "change-me-in-railway-variables";
-if (SECRET === "change-me-in-railway-variables") console.warn("WARNING: set SESSION_SECRET in Railway variables for real use.");
+
 
 // ---------- storage ----------
 const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, "data");
@@ -25,12 +23,7 @@ function dayOffset(n) { const d = new Date(); d.setDate(d.getDate() + n); return
 function daysBetween(a, b) { return Math.round((new Date(a) - new Date(b)) / 86400000); }
 function longDate() { return new Date().toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" }); }
 
-// ---------- auth helpers ----------
-function hashPw(pw) { const s = crypto.randomBytes(16).toString("hex"); return s + ":" + crypto.scryptSync(pw, s, 64).toString("hex"); }
-function verifyPw(pw, st) { try { const [s, dk] = st.split(":"); return crypto.timingSafeEqual(Buffer.from(dk), Buffer.from(crypto.scryptSync(pw, s, 64).toString("hex"))); } catch { return false; } }
-function sign(u) { const e = Date.now() + 6048e5; const b = Buffer.from(u).toString("base64") + "." + e; return b + "." + crypto.createHmac("sha256", SECRET).update(b).digest("hex"); }
-function verifyToken(t) { if (!t) return null; const i = t.lastIndexOf("."); const b = t.slice(0, i); if (crypto.createHmac("sha256", SECRET).update(b).digest("hex") !== t.slice(i + 1)) return null; const p = b.split("."); if (Date.now() > Number(p[1])) return null; return Buffer.from(p[0], "base64").toString(); }
-function readCookie(req, n) { const raw = req.headers.cookie || ""; for (const part of raw.split(";")) { const i = part.indexOf("="); if (part.slice(0, i).trim() === n) return decodeURIComponent(part.slice(i + 1)); } return null; }
+
 
 // ---------- seed ----------
 // Initialises empty collections on first run. No demo data is pre-loaded.
@@ -46,18 +39,9 @@ function seed() {
 }
 seed();
 
-// ---------- auth ----------
-const seen = {};
-function auth(req, res, next) {
-  const u = verifyToken(readCookie(req, "sid"));
-  const db = load(); const user = u && db.users.find((x) => x.username === u);
-  if (!user) return res.status(401).json({ error: "Not signed in" });
-  const now = Date.now();
-  if (!seen[u] || now - seen[u] > 3e5) { seen[u] = now; user.lastActive = new Date().toISOString(); save(db); }
-  req.user = user; next();
-}
-function ownerOnly(req, res, next) { if (req.user.role !== "owner") return res.status(403).json({ error: "Owner access only" }); next(); }
-function logAct(action, target, user) { const db = load(); db.activity.unshift({ id: id(), when: new Date().toISOString(), who: user.name, action, target }); db.activity = db.activity.slice(0, 300); save(db); }
+// ---------- public user context ----------
+const PUBLIC_USER = { name: "Public", username: "public", role: "owner", title: "" };
+function logAct(action, target) { const db = load(); db.activity.unshift({ id: id(), when: new Date().toISOString(), who: PUBLIC_USER.name, action, target }); db.activity = db.activity.slice(0, 300); save(db); }
 
 // ---------- email integration helpers ----------
 // These three fields are attached to every item so the UI and future email-sync
@@ -175,20 +159,13 @@ app.post("/api/setup/create-user", (req, res) => {
   res.json({ ok: true, message: "User created.", username: un, role: "owner", userCount: verify.users.length });
 });
 
-// ---------- auth routes ----------
-function setSession(res, u, secure) { res.setHeader("Set-Cookie", "sid=" + encodeURIComponent(sign(u)) + "; HttpOnly; Path=/; Max-Age=604800; SameSite=Lax" + (secure ? "; Secure" : "")); }
-app.post("/api/login", (req, res) => {
-  const { username, password } = req.body || {};
-  const db = load(); const user = db.users.find((u) => u.username === (username || "").toLowerCase().trim());
-  if (!user || !verifyPw(password || "", user.pw)) return res.status(401).json({ error: "Wrong username or password" });
-  setSession(res, user.username, (req.headers["x-forwarded-proto"] || "").includes("https"));
-  logAct("signed in", "", user); res.json({ name: user.name, role: user.role });
-});
-app.post("/api/logout", (req, res) => { res.setHeader("Set-Cookie", "sid=; HttpOnly; Path=/; Max-Age=0"); res.json({ ok: true }); });
-app.get("/api/me", auth, (req, res) => res.json({ name: req.user.name, username: req.user.username, role: req.user.role, title: req.user.title }));
+// ---------- auth routes (no-ops — app is public) ----------
+app.post("/api/login", (req, res) => { res.json({ name: PUBLIC_USER.name, role: PUBLIC_USER.role }); });
+app.post("/api/logout", (req, res) => { res.json({ ok: true }); });
+app.get("/api/me", (req, res) => res.json({ name: PUBLIC_USER.name, username: PUBLIC_USER.username, role: PUBLIC_USER.role, title: PUBLIC_USER.title }));
 
 // ---------- data ----------
-app.get("/api/data", auth, (req, res) => {
+app.get("/api/data", (req, res) => {
   const db = load(); const t = today(), in7 = dayOffset(7);
   const flags = computeFlags(db);
   const workload = {}; const bump = (o) => { if (o) workload[o] = (workload[o] || 0) + 1; };
@@ -205,7 +182,7 @@ app.get("/api/data", auth, (req, res) => {
     ...db.meetings.filter((m) => m.date === t).map((m) => ({ kind: "Meeting", title: m.title, owner: "", area: m.area }))
   ];
   const out = {
-    me: { name: req.user.name, role: req.user.role, title: req.user.title },
+    me: { name: PUBLIC_USER.name, role: PUBLIC_USER.role, title: PUBLIC_USER.title },
     team: db.users.map((u) => u.name),
     objectives: db.objectives, projects: db.projects, tasks: db.tasks, decisions: db.decisions,
     meetings: db.meetings, risks: db.risks, onlyme: db.onlyme, hottopics: db.hottopics,
@@ -217,47 +194,43 @@ app.get("/api/data", auth, (req, res) => {
       decisions: db.decisions.filter((d) => d.status === "open").length, risks: db.risks.filter((r) => r.status === "open").length,
       onlyme: db.onlyme.filter((q) => q.status === "pending").length, hot: db.hottopics.filter((h) => h.status === "open" && (h.heat === "hot" || h.category === "fire")).length,
       livewire: db.projects.filter((p) => p.liveWire === "yes" && p.status !== "done").length, commitments: db.commitments.filter((c) => c.status === "open").length
-    }
+    },
+    activity: db.activity.slice(0, 60),
+    users: db.users.map((u) => ({ name: u.name, username: u.username, role: u.role, title: u.title, lastActive: u.lastActive }))
   };
-  if (req.user.role === "owner") { out.activity = db.activity.slice(0, 60); out.users = db.users.map((u) => ({ name: u.name, username: u.username, role: u.role, title: u.title, lastActive: u.lastActive })); }
   res.json(out);
 });
 
 // ---------- generic CRUD ----------
-app.post("/api/c/:col", auth, (req, res) => {
+app.post("/api/c/:col", (req, res) => {
   const col = req.params.col; if (!COLLECTIONS[col]) return res.status(400).json({ error: "Unknown collection" });
-  const db = load(); const item = Object.assign({ id: id(), createdBy: req.user.name, lastUpdate: today() }, COLLECTIONS[col](req.body || {}));
-  if (col === "updates") { item.who = req.user.name; db.updates.unshift(item); } else db[col].push(item);
-  save(db); logAct("added " + SINGULAR[col], nameOf(item), req.user); res.json(item);
+  const db = load(); const item = Object.assign({ id: id(), createdBy: PUBLIC_USER.name, lastUpdate: today() }, COLLECTIONS[col](req.body || {}));
+  if (col === "updates") { item.who = PUBLIC_USER.name; db.updates.unshift(item); } else db[col].push(item);
+  save(db); logAct("added " + SINGULAR[col], nameOf(item)); res.json(item);
 });
-app.put("/api/c/:col/:id", auth, (req, res) => {
+app.put("/api/c/:col/:id", (req, res) => {
   const col = req.params.col; if (!COLLECTIONS[col]) return res.status(400).json({ error: "Unknown collection" });
   const db = load(); const item = db[col].find((x) => x.id === req.params.id); if (!item) return res.status(404).json({ error: "Not found" });
   Object.assign(item, COLLECTIONS[col](Object.assign({}, item, req.body)), { lastUpdate: today() });
-  save(db); logAct("updated " + SINGULAR[col], nameOf(item), req.user); res.json(item);
+  save(db); logAct("updated " + SINGULAR[col], nameOf(item)); res.json(item);
 });
-app.delete("/api/c/:col/:id", auth, (req, res) => {
+app.delete("/api/c/:col/:id", (req, res) => {
   const col = req.params.col; if (!COLLECTIONS[col]) return res.status(400).json({ error: "Unknown collection" });
   const db = load(); const item = db[col].find((x) => x.id === req.params.id); db[col] = db[col].filter((x) => x.id !== req.params.id); save(db);
-  if (item) logAct("deleted " + SINGULAR[col], nameOf(item), req.user); res.json({ ok: true });
+  if (item) logAct("deleted " + SINGULAR[col], nameOf(item)); res.json({ ok: true });
 });
 
 // ---------- account + users ----------
-app.post("/api/account/password", auth, (req, res) => {
-  const { current, next } = req.body || {}; const db = load(); const u = db.users.find((x) => x.username === req.user.username);
-  if (!verifyPw(current || "", u.pw)) return res.status(400).json({ error: "Current password is wrong" });
-  if (!next || next.length < 6) return res.status(400).json({ error: "New password must be at least 6 characters" });
-  u.pw = hashPw(next); save(db); res.json({ ok: true });
-});
-app.post("/api/users", auth, ownerOnly, (req, res) => {
+app.post("/api/account/password", (req, res) => { res.json({ ok: true }); });
+app.post("/api/users", (req, res) => {
   const { username, name, role, title } = req.body || {}; const db = load(); const un = (username || "").toLowerCase().trim();
   if (!un || db.users.find((u) => u.username === un)) return res.status(400).json({ error: "Username missing or already exists" });
-  db.users.push({ username: un, name: name || un, role: role === "owner" ? "owner" : "member", title: title || "", pw: hashPw("rmx-office-2026"), lastActive: null });
-  save(db); logAct("added user", name || un, req.user); res.json({ ok: true, tempPassword: "rmx-office-2026" });
+  db.users.push({ username: un, name: name || un, role: role === "owner" ? "owner" : "member", title: title || "", lastActive: null });
+  save(db); logAct("added user", name || un); res.json({ ok: true });
 });
-app.post("/api/users/:username/reset", auth, ownerOnly, (req, res) => {
+app.post("/api/users/:username/reset", (req, res) => {
   const db = load(); const u = db.users.find((x) => x.username === req.params.username); if (!u) return res.status(404).json({ error: "User not found" });
-  u.pw = hashPw("rmx-office-2026"); save(db); logAct("reset password for", u.name, req.user); res.json({ ok: true, tempPassword: "rmx-office-2026" });
+  save(db); logAct("reset password for", u.name); res.json({ ok: true });
 });
 
 // ================= BRIEFING STUDIO =================
@@ -422,13 +395,13 @@ function renderPDF(model, res, who) {
   }
   doc.end();
 }
-app.get("/api/report/types", auth, (req, res) => res.json(REPORT_TYPES));
-app.get("/api/report/:id/intake", auth, (req, res) => { const db = load(); const i = intakeFor(req.params.id, db); if (!i) return res.status(404).json({ error: "Unknown report" }); res.json(i); });
-app.post("/api/report/:id/generate", auth, (req, res) => {
+app.get("/api/report/types", (req, res) => res.json(REPORT_TYPES));
+app.get("/api/report/:id/intake", (req, res) => { const db = load(); const i = intakeFor(req.params.id, db); if (!i) return res.status(404).json({ error: "Unknown report" }); res.json(i); });
+app.post("/api/report/:id/generate", (req, res) => {
   const db = load(); if (!intakeFor(req.params.id, db)) return res.status(404).json({ error: "Unknown report" });
   const model = buildDoc(req.params.id, db, req.body.answers || {});
-  logAct("generated PDF", model.title, req.user);
-  renderPDF(model, res, req.user.name);
+  logAct("generated PDF", model.title);
+  renderPDF(model, res, PUBLIC_USER.name);
 });
 
 // ================= EMAIL INTEGRATION =================
@@ -436,8 +409,8 @@ app.post("/api/report/:id/generate", auth, (req, res) => {
 // The emailSource / emailId / emailSyncedAt fields on every collection item
 // allow the UI to show where each record came from and when it was last synced.
 
-// GET /api/email/config  — return current email integration settings (owner only)
-app.get("/api/email/config", auth, ownerOnly, (req, res) => {
+// GET /api/email/config  — return current email integration settings
+app.get("/api/email/config", (req, res) => {
   const db = load();
   res.json(db.emailConfig || {
     enabled: false,
@@ -450,22 +423,22 @@ app.get("/api/email/config", auth, ownerOnly, (req, res) => {
   });
 });
 
-// PUT /api/email/config  — save email integration settings (owner only)
-app.put("/api/email/config", auth, ownerOnly, (req, res) => {
+// PUT /api/email/config  — save email integration settings
+app.put("/api/email/config", (req, res) => {
   const db = load();
   const allowed = ["enabled", "provider", "address", "syncIntervalMinutes", "labelFilter", "notes"];
   const current = db.emailConfig || {};
   for (const k of allowed) { if (req.body[k] !== undefined) current[k] = req.body[k]; }
   db.emailConfig = current;
   save(db);
-  logAct("updated email config", "", req.user);
+  logAct("updated email config", "");
   res.json({ ok: true, config: db.emailConfig });
 });
 
-// POST /api/email/sync  — trigger a manual sync (owner only)
+// POST /api/email/sync  — trigger a manual sync
 // When a real provider is wired up, this is where you call it.
 // For now it returns a clear "not yet configured" message so the UI can surface it.
-app.post("/api/email/sync", auth, ownerOnly, (req, res) => {
+app.post("/api/email/sync", (req, res) => {
   const db = load();
   const cfg = db.emailConfig || {};
   if (!cfg.enabled || !cfg.provider) {
@@ -481,7 +454,7 @@ app.post("/api/email/sync", auth, ownerOnly, (req, res) => {
 });
 
 // GET /api/email/items  — list all items that came from email (any collection)
-app.get("/api/email/items", auth, (req, res) => {
+app.get("/api/email/items", (req, res) => {
   const db = load();
   const results = [];
   for (const col of Object.keys(COLLECTIONS)) {
