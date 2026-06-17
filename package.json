@@ -1,0 +1,17 @@
+{
+  "name": "ceo-office-command-center",
+  "version": "1.0.0",
+  "description": "RMX Group CEO Office Command Center: daily and weekly briefs, flagging, and project management. Railway-ready.",
+  "main": "server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "pdfkit": "^0.15.0"
+  }
+}

@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>CEO Office OS</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+<div class="app">
+  <aside class="side" id="side">
+    <div class="logoslot"><b>RMX</b> &nbsp;|&nbsp; <span class="bb">BluBird</span></div>
+    <nav class="nav" id="nav"></nav>
+    <div class="foot">
+      <div class="who"><div class="n" id="meName">—</div><div class="r" id="meRole"></div></div>
+      <button class="ghost sm" onclick="openAccount()">Change password</button>
+      <button class="ghost sm" onclick="logout()">Sign out</button>
+    </div>
+  </aside>
+
+  <main class="main">
+    <div class="topbar">
+      <div style="display:flex;align-items:center;gap:12px">
+        <button class="menu-btn" onclick="document.getElementById('side').classList.toggle('open')">☰</button>
+        <div><h1 class="view-title" id="vTitle">Dashboard</h1><div class="sub" id="vSub"></div></div>
+      </div>
+      <div class="actions" id="vActions"></div>
+    </div>
+    <div id="view"></div>
+  </main>
+</div>
+
+<div class="modal" id="modal"><div class="sheet" id="sheet"></div></div>
+<div class="modal" id="mAccount"><div class="sheet">
+  <h3>Change password</h3><div class="hint">Rotate from the seeded temp password.</div>
+  <label>Current password</label><input id="aCur" type="password" />
+  <label>New password</label><input id="aNew" type="password" />
+  <div class="note" id="acctNote"></div>
+  <div class="formfoot"><span></span><div class="right"><button class="ghost" onclick="close_('mAccount')">Cancel</button><button onclick="savePassword()">Update</button></div></div>
+</div></div>
+
+<script src="/app.js"></script>
+</body>
+</html>
