@@ -117,16 +117,62 @@ function computeFlags(db) {
 
 // ---------- setup ----------
 app.post("/api/setup/first-user", (req, res) => {
+  console.log("[setup] POST /api/setup/first-user called");
   const db = load();
+  console.log("[setup] current user count:", db.users.length);
   if (db.users.length > 0) return res.status(403).json({ error: "Setup already complete. Use /api/users to add more users (owner only)." });
   const { username, name, password } = req.body || {};
   const un = (username || "").toLowerCase().trim();
   if (!un) return res.status(400).json({ error: "username is required" });
   if (!name || !name.trim()) return res.status(400).json({ error: "name is required" });
   if (!password || password.length < 6) return res.status(400).json({ error: "password must be at least 6 characters" });
-  db.users.push({ username: un, name: name.trim(), role: "owner", title: "", pw: hashPw(password), lastActive: null });
+  const newUser = { username: un, name: name.trim(), role: "owner", title: "", pw: hashPw(password), lastActive: null };
+  db.users.push(newUser);
+  console.log("[setup] saving user:", un, "to", STORE);
   save(db);
+  const verify = load();
+  console.log("[setup] post-save user count:", verify.users.length);
   res.json({ ok: true, message: "First admin user created. You can now log in.", username: un, role: "owner" });
+});
+
+app.get("/api/setup/debug", (req, res) => {
+  const db = load();
+  const storeExists = fs.existsSync(STORE);
+  console.log("[debug] store path:", STORE, "exists:", storeExists, "users:", db.users.length);
+  res.json({
+    userCount: db.users.length,
+    dbFilePath: STORE,
+    storeExists,
+    users: db.users.map((u) => ({ username: u.username, name: u.name, role: u.role }))
+  });
+});
+
+app.post("/api/setup/create-user", (req, res) => {
+  console.log("[setup] POST /api/setup/create-user called");
+  const { username, name, password } = req.body || {};
+  const un = (username || "").toLowerCase().trim();
+  if (!un) return res.status(400).json({ error: "username is required" });
+  if (!name || !name.trim()) return res.status(400).json({ error: "name is required" });
+  if (!password || password.length < 6) return res.status(400).json({ error: "password must be at least 6 characters" });
+  const db = load();
+  const existing = db.users.find((u) => u.username === un);
+  if (existing) {
+    console.log("[setup] user already exists, overwriting password for:", un);
+    existing.pw = hashPw(password);
+    existing.name = name.trim();
+    existing.role = "owner";
+    save(db);
+    const verify = load();
+    console.log("[setup] post-save user count:", verify.users.length);
+    return res.json({ ok: true, message: "User updated.", username: un, role: "owner", userCount: verify.users.length });
+  }
+  const newUser = { username: un, name: name.trim(), role: "owner", title: "", pw: hashPw(password), lastActive: null };
+  db.users.push(newUser);
+  console.log("[setup] saving new user:", un, "to", STORE);
+  save(db);
+  const verify = load();
+  console.log("[setup] post-save user count:", verify.users.length);
+  res.json({ ok: true, message: "User created.", username: un, role: "owner", userCount: verify.users.length });
 });
 
 // ---------- auth routes ----------
