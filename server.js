@@ -115,6 +115,20 @@ function computeFlags(db) {
   return f;
 }
 
+// ---------- setup ----------
+app.post("/api/setup/first-user", (req, res) => {
+  const db = load();
+  if (db.users.length > 0) return res.status(403).json({ error: "Setup already complete. Use /api/users to add more users (owner only)." });
+  const { username, name, password } = req.body || {};
+  const un = (username || "").toLowerCase().trim();
+  if (!un) return res.status(400).json({ error: "username is required" });
+  if (!name || !name.trim()) return res.status(400).json({ error: "name is required" });
+  if (!password || password.length < 6) return res.status(400).json({ error: "password must be at least 6 characters" });
+  db.users.push({ username: un, name: name.trim(), role: "owner", title: "", pw: hashPw(password), lastActive: null });
+  save(db);
+  res.json({ ok: true, message: "First admin user created. You can now log in.", username: un, role: "owner" });
+});
+
 // ---------- auth routes ----------
 function setSession(res, u, secure) { res.setHeader("Set-Cookie", "sid=" + encodeURIComponent(sign(u)) + "; HttpOnly; Path=/; Max-Age=604800; SameSite=Lax" + (secure ? "; Secure" : "")); }
 app.post("/api/login", (req, res) => {
