@@ -57,10 +57,7 @@ function prog(n){n=Number(n)||0;return `<div class="prog"><i style="width:${n}%"
 // ---------- load + route ----------
 async function load(){
   const r = await fetch("/api/data");
-  if(r.status===401){location.href="/login.html";return;}
   DATA = await r.json();
-  $("meName").textContent = DATA.me.name;
-  $("meRole").textContent = (DATA.me.title?DATA.me.title+" · ":"")+DATA.me.role;
   renderNav(); route();
 }
 function renderNav(){
@@ -287,7 +284,7 @@ async function savePassword(){
   const d=await r.json(); $("acctNote").textContent=r.ok?"Password updated.":d.error; if(r.ok){$("aCur").value="";$("aNew").value="";}
 }
 function close_(id){ $(id).classList.remove("open"); }
-async function logout(){ await fetch("/api/logout",{method:"POST"}); location.href="/login.html"; }
+async function logout(){ await fetch("/api/logout",{method:"POST"}); }
 
 window.addEventListener("hashchange",route);
 load();
