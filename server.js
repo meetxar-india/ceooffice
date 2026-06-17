@@ -33,67 +33,16 @@ function verifyToken(t) { if (!t) return null; const i = t.lastIndexOf("."); con
 function readCookie(req, n) { const raw = req.headers.cookie || ""; for (const part of raw.split(";")) { const i = part.indexOf("="); if (part.slice(0, i).trim() === n) return decodeURIComponent(part.slice(i + 1)); } return null; }
 
 // ---------- seed ----------
+// Initialises empty collections on first run. No demo data is pre-loaded.
+// Team members add all entries manually or via email integration.
 function seed() {
   const db = load();
-  if (db.users.length) return;
-  const T = "rmx-office-2026";
-  db.users = [
-    { username: "abhinav", name: "Abhinav", role: "owner", title: "CEO", pw: hashPw(T), lastActive: null },
-    { username: "mandeep", name: "Mandeep", role: "member", title: "Executive Assistant", pw: hashPw(T), lastActive: null },
-    { username: "awadhesh", name: "Awadhesh", role: "member", title: "Chief of Staff", pw: hashPw(T), lastActive: null },
-    { username: "neha", name: "Neha", role: "member", title: "Governance", pw: hashPw(T), lastActive: null },
-    { username: "ishan", name: "Ishan", role: "member", title: "Systems", pw: hashPw(T), lastActive: null }
-  ];
-  const o1 = id(), o2 = id(), o3 = id();
-  db.objectives = [
-    { id: o1, title: "Close Project Hose on favorable terms", area: "Project Hose", ring: "1", owner: "Abhinav", horizon: "FY26", status: "on-track", progress: 55, notes: "FITT process, Deloitte advising", createdBy: "Abhinav", lastUpdate: today() },
-    { id: o2, title: "Stand up RMX Metals trading vertical", area: "RMX Metals", ring: "2", owner: "Ishan", horizon: "FY26", status: "at-risk", progress: 25, notes: "Structure sign-off pending", createdBy: "Abhinav", lastUpdate: dayOffset(-9) },
-    { id: o3, title: "Company-wide AI governance in place", area: "RMX", ring: "2", owner: "Ishan", horizon: "Q3", status: "on-track", progress: 40, notes: "", createdBy: "Abhinav", lastUpdate: today() }
-  ];
-  db.projects = [
-    { id: id(), name: "Principal call + forward business plan", area: "Project Hose", objectiveId: o1, owner: "Abhinav", status: "active", priority: "high", liveWire: "yes", startDate: dayOffset(-20), dueDate: dayOffset(3), progress: 60, nextAction: "Confirm agenda with Deloitte", notes: "VDD underway", createdBy: "Abhinav", lastUpdate: dayOffset(-1) },
-    { id: id(), name: "The Plan Beyond investor outreach", area: "Plan Beyond", objectiveId: "", owner: "Abhinav", status: "active", priority: "medium", liveWire: "no", startDate: dayOffset(-10), dueDate: dayOffset(7), progress: 30, nextAction: "Send Anupam Mittal approach", notes: "", createdBy: "Abhinav", lastUpdate: dayOffset(-2) },
-    { id: id(), name: "RMX Metals onboarding", area: "RMX Metals", objectiveId: o2, owner: "Ishan", status: "blocked", priority: "medium", liveWire: "yes", startDate: dayOffset(-30), dueDate: dayOffset(-2), progress: 20, nextAction: "", notes: "Waiting on structure sign-off", createdBy: "Abhinav", lastUpdate: dayOffset(-9) },
-    { id: id(), name: "AI tool subscription audit", area: "RMX", objectiveId: o3, owner: "Ishan", status: "active", priority: "high", liveWire: "no", startDate: dayOffset(-5), dueDate: dayOffset(5), progress: 40, nextAction: "Inventory subscriptions", notes: "", createdBy: "Abhinav", lastUpdate: today() }
-  ];
-  db.tasks = [
-    { id: id(), title: "Draft principal call agenda", projectId: "", area: "Project Hose", owner: "Awadhesh", due: dayOffset(1), status: "open", priority: "high", createdBy: "Abhinav", lastUpdate: today() },
-    { id: id(), title: "Prep board pack", projectId: "", area: "RMX", owner: "Neha", due: dayOffset(-1), status: "open", priority: "high", createdBy: "Abhinav", lastUpdate: dayOffset(-2) }
-  ];
-  db.decisions = [
-    { id: id(), title: "RMX Metals ownership split sign-off", area: "RMX Metals", owner: "Abhinav", status: "open", options: "60/40 KR/Vaibhav as proposed, vs revised vesting", decision: "", rationale: "", decidedDate: "", reviewDate: dayOffset(-1), createdBy: "Abhinav", lastUpdate: today() },
-    { id: id(), title: "Keep BBI inside FITT scope or entertain KCM", area: "Project Hose", owner: "Abhinav", status: "open", options: "Single sale to FITT, vs carve-out BBI to KCM", decision: "", rationale: "", decidedDate: "", reviewDate: dayOffset(2), createdBy: "Abhinav", lastUpdate: today() }
-  ];
-  db.meetings = [
-    { id: id(), title: "Weekly leadership sync", date: today(), area: "RMX", attendees: "Abhinav, Awadhesh, Neha, Ishan", agenda: "Pipeline, governance, Metals", notes: "", actions: [{ text: "Circulate governance draft", owner: "Neha", due: dayOffset(-1), done: false }], createdBy: "Abhinav", lastUpdate: today() }
-  ];
-  db.risks = [
-    { id: id(), title: "Vertical integration break if BBI sold separately", area: "Project Hose", owner: "Abhinav", likelihood: "high", impact: "high", mitigation: "Keep BBI inside the FITT scope", status: "open", createdBy: "Abhinav", lastUpdate: today() }
-  ];
-  db.onlyme = [
-    { id: id(), title: "Approve RMX Metals ownership split", area: "RMX Metals", from: "Vaibhav", type: "signoff", urgency: "high", due: dayOffset(-1), status: "pending", notes: "", createdBy: "Abhinav", lastUpdate: today() },
-    { id: id(), title: "Sign off principal call agenda", area: "Project Hose", from: "Awadhesh", type: "approval", urgency: "high", due: dayOffset(1), status: "pending", notes: "", createdBy: "Abhinav", lastUpdate: today() }
-  ];
-  db.hottopics = [
-    { id: id(), title: "KCM unsolicited inquiry targets BBI only", area: "Project Hose", category: "fire", heat: "hot", owner: "Abhinav", status: "open", notes: "Risk to vertical integration story", createdBy: "Abhinav", lastUpdate: today() },
-    { id: id(), title: "FNA Group undercutting on pressure-wash hose", area: "BluBird", category: "competitor", heat: "hot", owner: "Awadhesh", status: "open", notes: "", createdBy: "Abhinav", lastUpdate: today() }
-  ];
-  db.stakeholders = [
-    { id: id(), name: "FITT Group", type: "partner", lastTouch: dayOffset(-6), nextTouch: dayOffset(-1), openPromise: "Send forward business plan", owner: "Abhinav", notes: "Deloitte coordinating", createdBy: "Abhinav", lastUpdate: today() },
-    { id: id(), name: "KR sir (Chairman)", type: "family", lastTouch: dayOffset(-2), nextTouch: today(), openPromise: "", owner: "Abhinav", notes: "", createdBy: "Abhinav", lastUpdate: today() },
-    { id: id(), name: "Anupam Mittal", type: "investor", lastTouch: "", nextTouch: dayOffset(5), openPromise: "Send Plan Beyond approach", owner: "Abhinav", notes: "", createdBy: "Abhinav", lastUpdate: today() }
-  ];
-  db.metrics = [
-    { id: id(), label: "Cash position", group: "cash", area: "RMX", value: "—", target: "", unit: "INR Cr", period: "Now", notes: "Update from finance", createdBy: "Abhinav", lastUpdate: today() },
-    { id: id(), label: "BBI industrial + B2B revenue share", group: "northstar", area: "BBI", value: "49", target: "60", unit: "%", period: "FY26", notes: "", createdBy: "Abhinav", lastUpdate: today() },
-    { id: id(), label: "RMX Metals first revenue", group: "bet", area: "RMX Metals", value: "0", target: "1", unit: "deal", period: "FY26", notes: "", createdBy: "Abhinav", lastUpdate: today() }
-  ];
-  db.commitments = [
-    { id: id(), promise: "Send Anupam Mittal approach", to: "Plan Beyond / self", by: dayOffset(-1), area: "Plan Beyond", owner: "Abhinav", status: "open", notes: "", createdBy: "Abhinav", lastUpdate: today() },
-    { id: id(), promise: "Forward business plan to FITT", to: "FITT Group", by: dayOffset(2), area: "Project Hose", owner: "Abhinav", status: "open", notes: "", createdBy: "Abhinav", lastUpdate: today() }
-  ];
-  db.updates = [{ id: id(), type: "daily", area: "All", who: "Abhinav", text: "Reviewed pipeline hygiene; flagged stale Metals item.", date: today() }];
-  save(db);
+  // Ensure every known collection key exists (adds any new keys to old stores)
+  let dirty = false;
+  for (const key of Object.keys(EMPTY)) {
+    if (!Array.isArray(db[key])) { db[key] = []; dirty = true; }
+  }
+  if (dirty) save(db);
 }
 seed();
 
@@ -110,20 +59,31 @@ function auth(req, res, next) {
 function ownerOnly(req, res, next) { if (req.user.role !== "owner") return res.status(403).json({ error: "Owner access only" }); next(); }
 function logAct(action, target, user) { const db = load(); db.activity.unshift({ id: id(), when: new Date().toISOString(), who: user.name, action, target }); db.activity = db.activity.slice(0, 300); save(db); }
 
+// ---------- email integration helpers ----------
+// These three fields are attached to every item so the UI and future email-sync
+// routes can distinguish manually-entered records from email-sourced ones.
+function emailMeta(b) {
+  return {
+    emailSource: b.emailSource || "manual",   // "manual" | "email"
+    emailId:     b.emailId     || "",          // Message-ID of the source email
+    emailSyncedAt: b.emailSyncedAt || null     // ISO timestamp of last email sync
+  };
+}
+
 // ---------- collection schemas ----------
 const COLLECTIONS = {
-  objectives: (b) => ({ title: b.title || "Untitled objective", area: b.area || "RMX", ring: b.ring || "2", owner: b.owner || "", horizon: b.horizon || "FY26", status: b.status || "on-track", progress: clamp(b.progress), notes: b.notes || "" }),
-  projects: (b) => ({ name: b.name || "Untitled", area: b.area || "RMX", objectiveId: b.objectiveId || "", owner: b.owner || "", status: b.status || "active", priority: b.priority || "medium", liveWire: b.liveWire === "yes" ? "yes" : "no", startDate: b.startDate || "", dueDate: b.dueDate || "", progress: clamp(b.progress), nextAction: b.nextAction || "", notes: b.notes || "" }),
-  tasks: (b) => ({ title: b.title || "Untitled task", projectId: b.projectId || "", area: b.area || "RMX", owner: b.owner || "", due: b.due || "", status: b.status || "open", priority: b.priority || "medium" }),
-  decisions: (b) => ({ title: b.title || "Untitled decision", area: b.area || "RMX", owner: b.owner || "", status: b.status || "open", options: b.options || "", decision: b.decision || "", rationale: b.rationale || "", decidedDate: b.decidedDate || "", reviewDate: b.reviewDate || "" }),
-  meetings: (b) => ({ title: b.title || "Meeting", date: b.date || today(), area: b.area || "RMX", attendees: b.attendees || "", agenda: b.agenda || "", notes: b.notes || "", actions: Array.isArray(b.actions) ? b.actions : [] }),
-  risks: (b) => ({ title: b.title || "Risk", area: b.area || "RMX", owner: b.owner || "", likelihood: b.likelihood || "medium", impact: b.impact || "medium", mitigation: b.mitigation || "", status: b.status || "open" }),
-  onlyme: (b) => ({ title: b.title || "Untitled", area: b.area || "RMX", from: b.from || "", type: b.type || "decision", urgency: b.urgency || "medium", due: b.due || "", status: b.status || "pending", notes: b.notes || "" }),
-  hottopics: (b) => ({ title: b.title || "Untitled", area: b.area || "RMX", category: b.category || "competitor", heat: b.heat || "warm", owner: b.owner || "", status: b.status || "open", notes: b.notes || "" }),
-  stakeholders: (b) => ({ name: b.name || "Unnamed", type: b.type || "customer", lastTouch: b.lastTouch || "", nextTouch: b.nextTouch || "", openPromise: b.openPromise || "", owner: b.owner || "", notes: b.notes || "" }),
-  metrics: (b) => ({ label: b.label || "Metric", group: b.group || "northstar", area: b.area || "RMX", value: b.value || "", target: b.target || "", unit: b.unit || "", period: b.period || "", notes: b.notes || "" }),
-  commitments: (b) => ({ promise: b.promise || "Promise", to: b.to || "", by: b.by || "", area: b.area || "RMX", owner: b.owner || "", status: b.status || "open", notes: b.notes || "" }),
-  updates: (b) => ({ type: b.type || "daily", area: b.area || "All", text: b.text || "", date: today() })
+  objectives:   (b) => ({ title: b.title || "Untitled objective", area: b.area || "", ring: b.ring || "2", owner: b.owner || "", horizon: b.horizon || "", status: b.status || "on-track", progress: clamp(b.progress), notes: b.notes || "", ...emailMeta(b) }),
+  projects:     (b) => ({ name: b.name || "Untitled", area: b.area || "", objectiveId: b.objectiveId || "", owner: b.owner || "", status: b.status || "active", priority: b.priority || "medium", liveWire: b.liveWire === "yes" ? "yes" : "no", startDate: b.startDate || "", dueDate: b.dueDate || "", progress: clamp(b.progress), nextAction: b.nextAction || "", notes: b.notes || "", ...emailMeta(b) }),
+  tasks:        (b) => ({ title: b.title || "Untitled task", projectId: b.projectId || "", area: b.area || "", owner: b.owner || "", due: b.due || "", status: b.status || "open", priority: b.priority || "medium", ...emailMeta(b) }),
+  decisions:    (b) => ({ title: b.title || "Untitled decision", area: b.area || "", owner: b.owner || "", status: b.status || "open", options: b.options || "", decision: b.decision || "", rationale: b.rationale || "", decidedDate: b.decidedDate || "", reviewDate: b.reviewDate || "", ...emailMeta(b) }),
+  meetings:     (b) => ({ title: b.title || "Meeting", date: b.date || today(), area: b.area || "", attendees: b.attendees || "", agenda: b.agenda || "", notes: b.notes || "", actions: Array.isArray(b.actions) ? b.actions : [], ...emailMeta(b) }),
+  risks:        (b) => ({ title: b.title || "Risk", area: b.area || "", owner: b.owner || "", likelihood: b.likelihood || "medium", impact: b.impact || "medium", mitigation: b.mitigation || "", status: b.status || "open", ...emailMeta(b) }),
+  onlyme:       (b) => ({ title: b.title || "Untitled", area: b.area || "", from: b.from || "", type: b.type || "decision", urgency: b.urgency || "medium", due: b.due || "", status: b.status || "pending", notes: b.notes || "", ...emailMeta(b) }),
+  hottopics:    (b) => ({ title: b.title || "Untitled", area: b.area || "", category: b.category || "competitor", heat: b.heat || "warm", owner: b.owner || "", status: b.status || "open", notes: b.notes || "", ...emailMeta(b) }),
+  stakeholders: (b) => ({ name: b.name || "Unnamed", type: b.type || "customer", lastTouch: b.lastTouch || "", nextTouch: b.nextTouch || "", openPromise: b.openPromise || "", owner: b.owner || "", notes: b.notes || "", ...emailMeta(b) }),
+  metrics:      (b) => ({ label: b.label || "Metric", group: b.group || "northstar", area: b.area || "", value: b.value || "", target: b.target || "", unit: b.unit || "", period: b.period || "", notes: b.notes || "", ...emailMeta(b) }),
+  commitments:  (b) => ({ promise: b.promise || "Promise", to: b.to || "", by: b.by || "", area: b.area || "", owner: b.owner || "", status: b.status || "open", notes: b.notes || "", ...emailMeta(b) }),
+  updates:      (b) => ({ type: b.type || "daily", area: b.area || "All", text: b.text || "", date: today(), ...emailMeta(b) })
 };
 function clamp(n) { n = Number(n) || 0; return Math.max(0, Math.min(100, n)); }
 const SINGULAR = { objectives: "objective", projects: "project", tasks: "task", decisions: "decision", meetings: "meeting", risks: "risk", onlyme: "item", hottopics: "topic", stakeholders: "stakeholder", metrics: "metric", commitments: "commitment", updates: "update" };
@@ -409,6 +369,69 @@ app.post("/api/report/:id/generate", auth, (req, res) => {
   const model = buildDoc(req.params.id, db, req.body.answers || {});
   logAct("generated PDF", model.title, req.user);
   renderPDF(model, res, req.user.name);
+});
+
+// ================= EMAIL INTEGRATION =================
+// These routes are stubs ready for a real email provider (Gmail API, IMAP, etc.).
+// The emailSource / emailId / emailSyncedAt fields on every collection item
+// allow the UI to show where each record came from and when it was last synced.
+
+// GET /api/email/config  — return current email integration settings (owner only)
+app.get("/api/email/config", auth, ownerOnly, (req, res) => {
+  const db = load();
+  res.json(db.emailConfig || {
+    enabled: false,
+    provider: null,       // "gmail" | "imap" | null
+    address: null,        // inbox address to monitor
+    lastSyncAt: null,     // ISO timestamp of last successful sync
+    syncIntervalMinutes: 30,
+    labelFilter: null,    // e.g. "CEO-Office" — only pull emails with this label
+    notes: "Configure provider credentials via environment variables."
+  });
+});
+
+// PUT /api/email/config  — save email integration settings (owner only)
+app.put("/api/email/config", auth, ownerOnly, (req, res) => {
+  const db = load();
+  const allowed = ["enabled", "provider", "address", "syncIntervalMinutes", "labelFilter", "notes"];
+  const current = db.emailConfig || {};
+  for (const k of allowed) { if (req.body[k] !== undefined) current[k] = req.body[k]; }
+  db.emailConfig = current;
+  save(db);
+  logAct("updated email config", "", req.user);
+  res.json({ ok: true, config: db.emailConfig });
+});
+
+// POST /api/email/sync  — trigger a manual sync (owner only)
+// When a real provider is wired up, this is where you call it.
+// For now it returns a clear "not yet configured" message so the UI can surface it.
+app.post("/api/email/sync", auth, ownerOnly, (req, res) => {
+  const db = load();
+  const cfg = db.emailConfig || {};
+  if (!cfg.enabled || !cfg.provider) {
+    return res.status(503).json({
+      ok: false,
+      error: "Email integration is not yet configured. Set provider and credentials, then enable it via PUT /api/email/config."
+    });
+  }
+  // TODO: implement provider-specific sync (Gmail API / IMAP) here.
+  // Each parsed email should create or update items in the relevant collection
+  // with emailSource:"email", emailId:<Message-ID>, emailSyncedAt:<now>.
+  res.status(501).json({ ok: false, error: "Sync handler not yet implemented for provider: " + cfg.provider });
+});
+
+// GET /api/email/items  — list all items that came from email (any collection)
+app.get("/api/email/items", auth, (req, res) => {
+  const db = load();
+  const results = [];
+  for (const col of Object.keys(COLLECTIONS)) {
+    if (!Array.isArray(db[col])) continue;
+    for (const item of db[col]) {
+      if (item.emailSource === "email") results.push({ collection: col, ...item });
+    }
+  }
+  results.sort((a, b) => (b.emailSyncedAt || "").localeCompare(a.emailSyncedAt || ""));
+  res.json(results);
 });
 
 app.get("/health", (req, res) => res.json({ ok: true }));
