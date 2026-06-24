@@ -468,8 +468,8 @@ app.get("/api/email/items", (req, res) => {
 });
 
 app.get("/health", (req, res) => res.json({ ok: true }));
-app.use(express.static(__dirname));
 app.get("/login.html", (req, res) => res.sendFile(path.join(__dirname, "login.html")));
 app.get("/", (req, res) => res.sendFile(path.join(__dirname, "index.html")));
+app.use(express.static(__dirname));
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log("CEO Office OS running on " + PORT));
